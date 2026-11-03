@@ -1,5 +1,9 @@
 # dnswatch
 
+[![tests](https://github.com/cyberd4ch/dns-watch/actions/workflows/tests.yml/badge.svg)](https://github.com/cyberd4ch/dns-watch/actions/workflows/tests.yml)
+[![tag](https://img.shields.io/github/v/tag/cyberd4ch/dns-watch?style=flat-square)](https://github.com/cyberd4ch/dns-watch/tags)
+[![license](https://img.shields.io/github/license/cyberd4ch/dns-watch?style=flat-square)](./LICENSE)
+
 A small, dependency-free DNS drift watcher: point it at a list of hostnames
 and a cron schedule, and it tells you — in a plain-text log — whenever
 anything in that list changes. Built originally to watch a bug-bounty
@@ -58,14 +62,51 @@ dnswatch turns all four into a plain-text diff you can read in five seconds.
 
 ## Install
 
+Three supported paths; all land on the same one-file `dnswatch` binary.
+
+**From source (recommended)** — keeps the test suite one `make test` away:
+
 ```bash
 git clone https://github.com/cyberd4ch/dns-watch.git && cd dns-watch
 make test     # runs the offline mock-dig test suite; no network needed
-make install  # installs dnswatch.sh to /usr/local/bin (sudo)
+sudo make install
+```
+
+**Manual single file** — one script, no git, no checkout; review it first,
+it is ~170 lines of shell:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/cyberd4ch/dns-watch/main/dnswatch.sh \
+      -o /tmp/dnswatch
+less /tmp/dnswatch                      # your eyeballs are the checksum
+sudo install -m 0755 /tmp/dnswatch /usr/local/bin/dnswatch
+rm /tmp/dnswatch
+```
+
+**Release tarball** — pinned copy of a tagged version, no `main` drift:
+
+```bash
+curl -sSL https://github.com/cyberd4ch/dns-watch/archive/refs/tags/v1.1.0.tar.gz \
+      | tar -xz && cd dns-watch-1.1.0
+sudo make install
+```
+
+If you want takeover tagging (`-T`), also put `signatures.tsv` somewhere
+permanent and pass its path; the file is data, not part of the binary and
+is extended by the community over time.
+
+### Sanity check
+
+```bash
+dnswatch --version
+dnswatch -t targets.list.example -s /tmp/dw-state -l /tmp/dw.log
 ```
 
 Requirements: `bash`, `dig` (bind9-dnsutils / bind-tools / `dnsutils` package),
-`diff`, standard coreutils. Everything runs on Linux/macOS.
+`diff`, standard coreutils. Everything runs on Linux/macOS. macOS ships
+`dig`; on Debian/Ubuntu it is `apt install bind9-dnsutils`, on Alpine
+`apk add bind-tools`. Homebrew/navs packaging is tracked but not shipped
+yet — the git paths above are the supported installs.
 
 ## Usage
 
