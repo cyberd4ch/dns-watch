@@ -89,6 +89,10 @@ tested offline, and no engine surgery required:
 * All three checks must pass on your branch: `make test`, `make shellcheck`,
   and — if the log output changed — a re-read of the README examples (copy
   its sample `dns-watch.log` if the format moved).
+* Local and CI shellcheck versions differ; the CI one is older and flags
+  info-level findings (SC2015-style `A && B || C`) that newer local versions
+  may not. If CI goes red while your local gate is green, read the CI log —
+  fix the finding at the root; never suppress it.
 * If you added or changed a documented behavior, update `README.md` in the
   same PR. The README is the manual; there is no wiki.
 * No signing-off ceremony: MIT license, your PR, your code. By contributing
