@@ -120,7 +120,7 @@ dnswatch.sh -t targets.txt -s state -l dns-watch.log -T signatures.tsv
 
 ## Tests
 
-`make test` runs five scenarios against a **mocked `dig`** (no network, no
+`make test` runs six scenarios against a **mocked `dig`** (no network, no
 permissions needed):
 
 1. baseline + repeat run → `BASELINE` then `CLEAN`; the canary reports
@@ -132,8 +132,12 @@ permissions needed):
 4. failing health control → `SKIP`, no diff written
 5. bad invocations exit `2` (missing targets file, malformed `-c`);
    `--version` exits `0`
+6. the takeover drill: a provider endpoint goes dark between runs and the
+   target gets classified **by the shipped `signatures.tsv`** — including a
+   `NOT claimable` provider logging its honest label instead of a soft one —
+   while an unrelated deletion still fires `CHANGES` in the same run
 
-CI runs the same five scenarios plus `shellcheck` on every push
+CI runs the same six scenarios plus `shellcheck` on every push
 (`.github/workflows/tests.yml`).
 
 ## Origin & honesty section
@@ -145,6 +149,12 @@ resolver flaps and v3 burned five minutes per run chasing a blackholed
 a control that refuses to lie. If you find the idea derivative: yes —
 `dnstwist` finds lookalikes, takeover tools check one instant in time, and
 Detectify/SecurityTrails monitor at SaaS prices. dnswatch is the five-minute,
-readable-log middle ground for one box and one cron entry.
+readable-log middle ground for one box and one cron entry.License: MIT. See `LICENSE`.
 
-License: MIT. See `LICENSE`.
+## Sponsorship
+
+dnswatch is free forever — no tiers, no premium gates. The Sponsor button
+(this repo's `FUNDING.yml`) funds a month of resolver and hosted-instance
+costs when the [Sponsors profile](https://github.com/sponsors/cyberd4ch)
+accepts payouts; contributions to the signature table and packaging count
+for more than money does.

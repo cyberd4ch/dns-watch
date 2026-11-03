@@ -175,6 +175,51 @@ else
   bad "snapshots identical with and without -T (content invariant intact)"
 fi
 
+# ---------------------------------------------------------------- scenario 7
+say "7. takeover drill: drift->candidate pipeline against the SHIPPED signatures.tsv"
+# This is the end-to-end drill of the -T path: a provider-dangling chain
+# fires its classification from the real table (not a fixture copy), the
+# honest NOT-claimable label survives to the log, and a run that is both
+# CHANGES and candidate-tagged proves tagging never eats the diff.
+fresh
+cat <<'EOF' > "$WORK/targets.txt"
+steady.test
+drift-s3.test
+drift-fastly.test
+EOF
+cat <<'EOF' >> "$MOCKDB"
+steady.test	CNAME	steady-edge.testnet
+steady-edge.testnet	A	99.84.0.1
+drift-s3.test	CNAME	live-bucket.s3.amazonaws.com
+live-bucket.s3.amazonaws.com	A	52.94.0.1
+drift-fastly.test	CNAME	live.fastly.net
+live.fastly.net	A	151.101.0.1
+EOF
+
+bash "$SCRIPT" -t "$WORK/targets.txt" -s "$WORK/drillstate" -l "$WORK/drill.log" \
+      -T "$SRC/signatures.tsv" >/dev/null 2>&1
+assert_log_has_not "$WORK/drill.log" "takeover-candidate" "healthy buckets: no candidates at baseline"
+
+sleep 1
+# Run 2: both provider endpoints go dark && steady's CNAME is deleted.
+# Three independent greps, each with || true-driven mv (see scenario 3 note).
+grep -v '^live-bucket\.s3\.amazonaws\.com' "$MOCKDB" > "$MOCKDB.new"; mv "$MOCKDB.new" "$MOCKDB"
+grep -v '^live\.fastly\.net' "$MOCKDB" > "$MOCKDB.new"; mv "$MOCKDB.new" "$MOCKDB"
+grep -v '^steady\.test' "$MOCKDB" > "$MOCKDB.new"; mv "$MOCKDB.new" "$MOCKDB"
+bash "$SCRIPT" -t "$WORK/targets.txt" -s "$WORK/drillstate" -l "$WORK/drill.log" \
+      -T "$SRC/signatures.tsv" >/dev/null 2>&1
+
+assert_log_has "$WORK/drill.log" "CHANGES" "steady CNAME deletion still fires CHANGES"
+assert_log_has "$WORK/drill.log" "takeover-candidate: drift-s3.test -> live-bucket.s3.amazonaws.com \[provider=AWS S3 (static website bucket)\]" "S3 row classified by the shipped table"
+assert_log_has "$WORK/drill.log" "verify: HTTP GET apex" "full verify-hint travels with the tag"
+assert_log_has "$WORK/drill.log" "takeover-candidate: drift-fastly.test -> live.fastly.net \[provider=Fastly (community list: NOT claimable)\]" "NOT-claimable label preserved, not softened"
+if [ "$(grep -c 'takeover-candidate: steady.test' "$WORK/drill.log")" -eq 0 ]; then
+  ok "steady.test never mis-tagged (healthy, then unaliased)"
+else
+  bad "steady.test never mis-tagged (healthy, then unaliased)"
+fi
+assert_log_has "$WORK/drill.log" "takeover-check: 2 dangling chain(s) of 2 aliased host(s)" "drill summary counts"
+
 say ""
 say "results: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]
