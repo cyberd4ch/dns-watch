@@ -1,0 +1,33 @@
+# dnswatch takeover-signature table — consumed by -T (EXPERIMENTAL).
+# Format: suffix<TAB>provider<TAB>verify-hint. Longest matching suffix wins.
+# Fingerprints referenced from the community can-i-take-over-xyz list
+# (github.com/EdOverflow/can-i-take-over-xyz); when that list marks a
+# service edge-case or NOT claimable, the provider column says so — the
+# table stays honest about uncertainty instead of loud.
+# verify-hint = the MANUAL check the human runs (the tool never sends HTTP).
+# Only add providers whose fingerprints you can verify change slowly.
+s3.amazonaws.com	AWS S3 (static website bucket)	HTTP GET apex: body says "The specified bucket does not exist" (NoSuchBucket); the bucket name in the body is the claimable one
+github.io	GitHub Pages (community: edge case)	HTTP GET: body says There isn't a GitHub Pages site here (404); claim path depends on the custom-domain flow — verify manually
+herokuapp.com	Heroku (community: edge case)	HTTP GET: body says No such app — verify manually before acting on the candidate
+azurewebsites.net	Azure Web Apps	HTTP GET: body says 404 Web Site not found; on the azurewebsites family the community-verified claimable signal is the domain being NXDOMAIN
+cloudapp.net	Azure (classic cloudapp family)	HTTP GET and verify 404 body content manually; family-level community-verified signal is NXDOMAIN
+azureedge.net	Azure CDN/edge	HTTP GET and verify body content manually; azure family community-verified signal is NXDOMAIN
+elasticbeanstalk.com	AWS Elastic Beanstalk (community CI-verified)	HTTP GET: body says The requested resource does not exist.; the community-verified signal is NXDOMAIN
+fastly.net	Fastly (community list: NOT claimable)	HTTP GET: body says Fastly error: unknown domain: <host> — treat the candidate as informational unless independently verified
+netlify.app	Netlify (community: edge case)	HTTP GET: body says Not Found - Request ID: <id>; claim path re-attaches the custom domain — verify manually
+bitbucket.io	Bitbucket Cloud Pages (community CI-verified)	HTTP GET: body says Repository not found
+ghost.io	Ghost (Pro)	HTTP GET: body matches Site unavailable or Failed to resolve DNS path for this host
+helpjuice.com	Help Juice	HTTP GET: body says We could not find what you're looking for.
+helpscoutdocs.com	Help Scout Docs	HTTP GET: body says No settings were found for this company:
+readme.io	Readme.io	HTTP GET: body says The creators of this project are still working on making everything perfect!
+surge.sh	Surge.sh (community CI-verified)	HTTP GET: body says project not found
+wordpress.com	WordPress.com (community CI-verified)	HTTP GET: body says Do you want to register <host>?
+cargocollective.com	Cargo Collective	HTTP GET: body says 404 Not Found — verify the Cargo claim flow manually
+strikinglydns.com	Strikingly (community CI-verified)	HTTP GET: body says PAGE NOT FOUND.
+ngrok.io	Ngrok	HTTP GET: body says Tunnel <host> not found
+uberflip.com	Uberflip (community CI-verified)	HTTP GET: body says The URL you've accessed does not provide a hub.
+hatenablog.com	Hatena Blog (community CI-verified)	HTTP GET: body says 404 Blog is not found
+animaapp.io	Anima (community CI-verified)	HTTP GET: body says The page you were looking for does not exist.
+youtrack.cloud	JetBrains YouTrack InCloud	HTTP GET: body says is not a registered InCloud YouTrack
+surveysparrow.com	SurveySparrow (community CI-verified)	HTTP GET: body says Account not found.
+short.io	Short.io	HTTP GET: body says Link does not exist

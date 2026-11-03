@@ -1,0 +1,13 @@
+# dnswatch targets — one FQDN per line, # comments allowed.
+# Tip: include (1) every tracked asset from your scope note, (2) known
+# CNAME chains' heads, (3) a currently-dead name you suspect may launch
+# (it will log A -> "" until the month it goes live, then CHANGES fires).
+# A record-type suffix (@MX/@NS/@TXT/@A/@CNAME) watches that one type only —
+# handy for apex records (MX/A appearance) the A+CNAME default can't see:
+#
+# example.com
+# www.example.com
+# staging.example.com
+# quiet-beta.example.com
+# example.com@MX
+# example.com@NS

@@ -1,0 +1,55 @@
+#!/usr/bin/env bash
+# mock dig for the dnswatch test-suite. Answers from a small TSV database:
+#
+#     name<TAB>rrtype<TAB>answer-line-1[,answer-line-2,...]
+#
+# pointed at by $MOCKDB. Missing entries resolve to "" (NXDOMAIN/NODATA),
+# matching real dig +short behaviour. Supports +tcp / @resolver args and
+# ignores timeouts, so tests are deterministic and network-free.
+set -u
+
+MOCKDB="${MOCKDB:?MOCKDB env var must point at the mock zone file}"
+
+rr=""
+name=""
+rev=""
+# :+ default is load-bearing: with set -u an unset reverse flag must not kill
+# the mock (it used to exit "unbound variable" before reading anything).
+case "${DNSWATCH_MOCK_REVERSE:-}" in
+  1) rev=1 ;;
+  *) rev=0 ;;
+esac
+
+for a in "$@"; do
+  case "$a" in
+    @*|+*) : ;;
+    A|CNAME|MX|NS|TXT) rr="$a" ;;
+    *) name="$a" ;;
+  esac
+done
+
+if [ -z "$rr" ] || [ -z "$name" ]; then
+  echo "mock dig: no name/type in args: $*" >&2
+  exit 1
+fi
+
+# resolver argument order must not matter
+norm_name="$(echo "$name" | tr '[:upper:]' '[:lower:]')"
+
+# default IFS: splits on any run of whitespace (tabs or spaces) so the
+# zone file is author-friendly; answers are comma-joined with no spaces.
+while read -r m_name m_rr m_answers; do
+  [ "$(echo "$m_name" | tr '[:upper:]' '[:lower:]')" = "$norm_name" ] || continue
+  [ "$m_rr" = "$rr" ] || continue
+  if [ "$rev" = 1 ]; then
+    # reverse the answer lines to simulate resolver order shuffling
+    # (awk, not tac — tac is GNU-only and breaks on BSD/macOS)
+    printf '%s\n' "$m_answers" | tr ',' '\n' \
+      | awk '{lines[NR]=$0} END{for(i=NR;i>=1;i--) print lines[i]}'
+  else
+    printf '%s\n' "$m_answers" | tr ',' '\n'
+  fi
+  exit 0
+done < "$MOCKDB"
+
+exit 0
