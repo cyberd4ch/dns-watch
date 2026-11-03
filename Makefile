@@ -1,4 +1,4 @@
-.PHONY: test shellcheck install clean
+.PHONY: test shellcheck install clean release-artifact
 
 SCRIPT := dnswatch.sh
 
@@ -14,3 +14,8 @@ install: $(SCRIPT)
 
 clean:
 	rm -rf tests/work
+
+# Deterministic release tarball -> /tmp/dnswatch-<ver>.tar.gz + sha256.
+# VER_TAG = HEAD|vX.Y.Z (defaults to HEAD). Same recipe CI's tap-bump runs.
+release-artifact:
+	@bash scripts/build-release-artifact.sh "$(VER_TAG)"

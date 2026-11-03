@@ -1,0 +1,92 @@
+name: tap-bump
+
+# Keeps cyberd4ch/homebrew-dnswatch pinned to each dns-watch release:
+# builds the deterministic dnswatch-<ver>.tar.gz (same recipe as
+# `make release-artifact`), uploads it to the release, then updates the
+# tap formula's URL + sha256 and pushes. Cross-repo push uses a write
+# deploy key on the tap repo (secret TAP_DEPLOY_KEY) — the default
+# GITHUB_TOKEN cannot write to a second repository.
+#
+# Semantics:
+#   * `push` of a v* tag -> builds, uploads, bumps the tap.
+#   * `workflow_dispatch` -> re-runs against the newest tag (useful to
+#     repair a pin or re-verify); no-ops with "nothing to commit"
+#     when the formula already matches.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write  # gh release create/upload on THIS repo
+
+jobs:
+  bump:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout (full history, tags included)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: resolve tag
+        id: tag
+        run: |
+          set -euo pipefail
+          if [ "${GITHUB_REF_TYPE:-branch}" = "tag" ]; then
+            TAG="${GITHUB_REF_NAME#v}"
+          else
+            TAG="$(git tag --sort=-v:refname | head -n1 | sed 's/^v//')"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+
+      - name: build release artifact
+        id: artifact
+        run: |
+          set -euo pipefail
+          OUT="$(bash scripts/build-release-artifact.sh "v${{ steps.tag.outputs.tag }}" | tail -n1)"
+          SHA="$(shasum -a 256 "$OUT" | cut -d' ' -f1)"
+          echo "path=$OUT" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+
+      - name: upload asset to the release (create it if missing)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          gh release view "v${{ steps.tag.outputs.tag }}" >/dev/null 2>&1 \
+            || gh release create "v${{ steps.tag.outputs.tag }}" --generate-notes
+          gh release upload "v${{ steps.tag.outputs.tag }}" "${{ steps.artifact.outputs.path }}" --clobber
+
+      - name: set up tap deploy key
+        env:
+          TAP_DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          printf '%s\n' "$TAP_DEPLOY_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan github.com >> ~/.ssh/known_hosts
+          printf 'Host github.com\n  IdentityFile ~/.ssh/id_ed25519\n  User git\n' > ~/.ssh/config
+
+      - name: commit tap bump
+        env:
+          TAG: ${{ steps.tag.outputs.tag }}
+          SHA: ${{ steps.artifact.outputs.sha }}
+        run: |
+          set -euo pipefail
+          git clone git@github.com:cyberd4ch/homebrew-dnswatch.git tap
+          cd tap
+          sed -i "s#url \"https://github.com/cyberd4ch/dns-watch/releases/download/[^\"]*\"#url \"https://github.com/cyberd4ch/dns-watch/releases/download/v${TAG}/dnswatch-${TAG}.tar.gz\"#" Formula/dnswatch.rb
+          sed -i "s#sha256 \"[0-9a-f]*\"#sha256 \"${SHA}\"#" Formula/dnswatch.rb
+          git config user.name  "tap-bump[bot]"
+          git config user.email "tap-bump[bot]@users.noreply.github.com"
+          if git diff --quiet; then
+            echo "formula already pinned to v${TAG}; nothing to commit"
+            exit 0
+          fi
+          git add Formula/dnswatch.rb
+          git commit -qam "dnswatch v${TAG} (asset sha256 ${SHA})"
+          git push origin main
