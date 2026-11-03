@@ -7,7 +7,8 @@ test:
 	@bash tests/run_tests.sh
 
 shellcheck:
-	shellcheck $(SCRIPT) tests/run_tests.sh tests/mocks/dig
+	shellcheck $(SCRIPT) tests/run_tests.sh tests/mocks/dig \
+		scripts/build-release-artifact.sh
 
 install: $(SCRIPT)
 	install -m 0755 $(SCRIPT) /usr/local/bin/dnswatch
