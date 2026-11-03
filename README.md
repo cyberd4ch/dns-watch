@@ -62,9 +62,18 @@ dnswatch turns all four into a plain-text diff you can read in five seconds.
 
 ## Install
 
-Three supported paths; all land on the same one-file `dnswatch` binary.
+Four supported paths; all land on the same one-file `dnswatch` binary.
 
-**From source (recommended)** — keeps the test suite one `make test` away:
+**Homebrew** — the tag-pinned, sha256-verified route:
+
+```bash
+brew install cyberd4ch/dnswatch/dnswatch
+# signature table lands at $(brew --prefix)/share/dnswatch/signatures.tsv
+# (pass that path to -T; requires dig, which macOS ships)
+```
+
+**From source (recommended for contributors)** — keeps the test suite one
+`make test` away:
 
 ```bash
 git clone https://github.com/cyberd4ch/dns-watch.git && cd dns-watch
@@ -105,8 +114,7 @@ dnswatch -t targets.list.example -s /tmp/dw-state -l /tmp/dw.log
 Requirements: `bash`, `dig` (bind9-dnsutils / bind-tools / `dnsutils` package),
 `diff`, standard coreutils. Everything runs on Linux/macOS. macOS ships
 `dig`; on Debian/Ubuntu it is `apt install bind9-dnsutils`, on Alpine
-`apk add bind-tools`. Homebrew/navs packaging is tracked but not shipped
-yet — the git paths above are the supported installs.
+`apk add bind-tools`, and Linuxbrew users want `brew install bind`.
 
 ## Usage
 
