@@ -220,6 +220,63 @@ else
 fi
 assert_log_has "$WORK/drill.log" "takeover-check: 2 dangling chain(s) of 2 aliased host(s)" "drill summary counts"
 
+# ---------------------------------------------------------------- scenario 8
+say "8. release-artifact recipe is byte-deterministic (two builds -> one sha256)"
+if ! command -v zip >/dev/null 2>&1; then
+  bad "packaging test needs zip (apt install zip)"
+else
+  OUT1="$WORK/art1"; OUT2="$WORK/art2"
+  mkdir -p "$OUT1" "$OUT2"
+  # Build 1: crafted mtimes difference between the two attempts (a real mtime
+  # change inside the source checkout CANNOT leak into the archive because
+  # the recipe sources from `git archive`, but prove it anyway). Build 2:
+  # sleep 1 between runs so wall clock cannot mask nondeterminism.
+  if (cd "$SRC" && OUTDIR="$OUT1" bash scripts/build-release-artifact.sh HEAD \
+        >"$WORK/art1.log" 2>/dev/null); then
+    ok "first artifact build succeeds"
+  else
+    bad "first artifact build succeeds (log: $WORK/art1.log)"
+  fi
+  sleep 1
+  touch "$SRC/README.md"   # a real mtime change must NOT leak into the archive
+  if (cd "$SRC" && OUTDIR="$OUT2" bash scripts/build-release-artifact.sh HEAD \
+        >"$WORK/art2.log" 2>/dev/null); then
+    ok "second artifact build succeeds"
+  else
+    bad "second artifact build succeeds (log: $WORK/art2.log)"
+  fi
+  tar1="$(grep -Eo '^[0-9a-f]{64}' "$WORK/art1.log" | head -n1)"
+  tar2="$(grep -Eo '^[0-9a-f]{64}' "$WORK/art2.log" | head -n1)"
+  if [ -n "$tar1" ] && [ -n "$tar2" ] && [ "$tar1" = "$tar2" ]; then
+    ok "two builds produce the identical sha256 ($(printf '%s' "$tar1" | cut -c1-16)…)"
+  else
+    bad "two builds produce the identical sha256 (sha1='${tar1:-none}', sha2='${tar2:-none}')"
+  fi
+  # Archive contains the expected packaging payload at the root (the layout
+  # Homebrew's bin.install / (share/...install depend on).
+  tarpth="$(tail -n 1 "$WORK/art1.log")"
+  tarname="$(basename "$tarpth")"
+  listing="$(unzip -Z1 "$tarpth" 2>/dev/null)"
+  for f in dnswatch.sh signatures.tsv; do
+    if printf '%s\n' "$listing" | grep -q "^$f$"; then
+      ok "archive contains $f at the root"
+    else
+      bad "archive contains $f at the root"
+    fi
+  done
+  # Both the version inside dnswatch.sh and the tarball NAME derive from the
+  # recipe's self-detected VERSION — they must agree with the repo's VERSION.
+  shipped_ver="$(unzip -p "$tarpth" dnswatch.sh \
+      | sed -n 's/.*VERSION="\([0-9.]*\)".*/\1/p' | head -n1)"
+  repo_ver="$(sed -n 's/.*VERSION="\([0-9.]*\)".*/\1/p' "$SRC/dnswatch.sh" | head -n1)"
+  if [ "$shipped_ver" = "$repo_ver" ] \
+      && [ "$tarname" = "dnswatch-$repo_ver.tar.gz" ]; then
+    ok "shipped VERSION ($shipped_ver) == repo VERSION and tarball name ($tarname)"
+  else
+    bad "shipped VERSION ($shipped_ver) == repo VERSION ($repo_ver) and tarball name ($tarname)"
+  fi
+fi
+
 say ""
 say "results: $PASS passed, $FAIL failed"
 [ "$FAIL" = 0 ]

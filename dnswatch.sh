@@ -21,7 +21,7 @@
 #        2 on usage/config errors (missing targets file, bad control spec).
 set -u
 
-VERSION="1.1.0"
+VERSION="1.1.1"
 DIG_TIME="${DNSWATCH_DIG_TIME:-3}"
 # "" (system resolver) is always tried LAST, whether or not it is listed.
 RESOLVERS=" ${DNSWATCH_RESOLVERS:-@1.1.1.1 @8.8.8.8} "

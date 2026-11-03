@@ -95,8 +95,8 @@ rm /tmp/dnswatch
 **Release tarball** — pinned copy of a tagged version, no `main` drift:
 
 ```bash
-curl -sSL https://github.com/cyberd4ch/dns-watch/archive/refs/tags/v1.1.0.tar.gz \
-      | tar -xz && cd dns-watch-1.1.0
+curl -sSL https://github.com/cyberd4ch/dns-watch/archive/refs/tags/v1.1.1.tar.gz \
+      | tar -xz && cd dns-watch-1.1.1
 sudo make install
 ```
 
@@ -169,8 +169,8 @@ dnswatch.sh -t targets.txt -s state -l dns-watch.log -T signatures.tsv
 
 ## Tests
 
-`make test` runs six scenarios against a **mocked `dig`** (no network, no
-permissions needed):
+`make test` runs eight scenarios (seven against a **mocked `dig`**, no
+network, no permissions needed; the eighth watches packaging only):
 
 1. baseline + repeat run → `BASELINE` then `CLEAN`; the canary reports
    `none` under mock NXDOMAIN
@@ -185,8 +185,14 @@ permissions needed):
    target gets classified **by the shipped `signatures.tsv`** — including a
    `NOT claimable` provider logging its honest label instead of a soft one —
    while an unrelated deletion still fires `CHANGES` in the same run
+7. same as 6, but with the **shipped** `signatures.tsv` (packaging fails
+   silently if the table ever drifts from the fixtures)
+8. **packaging invariant**: `scripts/build-release-artifact.sh` builds the
+   release tarball twice and asserts both runs land the identical sha256,
+   root payload unchanged, and the tarball name/version match the engine's
+   `VERSION` — re-runs prove the tap pin is reproducible at any time
 
-CI runs the same six scenarios plus `shellcheck` on every push
+CI runs the same eight scenarios plus `shellcheck` on every push
 (`.github/workflows/tests.yml`).
 
 ## Origin & honesty section
