@@ -32,7 +32,10 @@ echo "[2/4] normalize mtimes" >&2
 find "$TREE" -type d -exec touch -t 200001010000.00 {} +
 find "$TREE" -type f -exec touch -t 200001010000.00 {} +
 
-VER_NO_V="$(cd "$TREE" && ./dnswatch.sh --version 2>/dev/null || true)"
+VER_NO_V=""
+if (cd "$TREE" && ./dnswatch.sh --version >/dev/null 2>&1); then
+  VER_NO_V="$(cd "$TREE" && ./dnswatch.sh --version)"
+fi
 if [ -z "$VER_NO_V" ]; then
   # tag not shipped yet in dir: parse from the archive contents instead
   VER_NO_V="$(sed -n 's/.*VERSION="\([0-9.]*\)".*/\1/p' "$TREE/dnswatch.sh" | head -n1)"
